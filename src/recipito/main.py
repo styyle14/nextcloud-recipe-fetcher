@@ -13,10 +13,7 @@ import json
 import requests
 
 # Change relative import to absolute import
-try:
-    from recipito.nextcloud_recipe import save_nextcloud_recipe
-except ImportError:
-    from nextcloud_recipe import save_nextcloud_recipe
+from recipito.nextcloud_recipe import save_nextcloud_recipe
 
 app = typer.Typer(help="URL processor application")
 
