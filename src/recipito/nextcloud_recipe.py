@@ -17,8 +17,37 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
         seconds = seconds % 60
         return f"PT{hours}H{minutes}M{seconds}S"
 
+    # Convert unicode fractions to standard fractions
+    def convert_fractions(text: str) -> str:
+        fraction_map = {
+            '\u00bc': '1/4',
+            '\u00bd': '1/2',
+            '\u00be': '3/4',
+            '\u2153': '1/3',
+            '\u2154': '2/3',
+            '\u2155': '1/5',
+            '\u2156': '2/5',
+            '\u2157': '3/5',
+            '\u2158': '4/5',
+            '\u2159': '1/6',
+            '\u215a': '5/6',
+            '\u215b': '1/8',
+            '\u215c': '3/8',
+            '\u215d': '5/8',
+            '\u215e': '7/8',
+        }
+        for unicode_char, fraction in fraction_map.items():
+            text = text.replace(unicode_char, fraction)
+        return text
+
+    # Convert ingredients with fraction handling
+    ingredients = [
+        convert_fractions(ingredient["name"])
+        for ingredient in raw_recipe.get("ingredients", [])
+    ]
+
     return {
-        "id": str(raw_recipe.get("id", ""))[:5],  # Take first 5 chars of UUID
+        "id": str(raw_recipe.get("id", ""))[:5],
         "name": raw_recipe.get("name", ""),
         "description": "",
         "url": raw_recipe.get("sourceUrl", ""),
@@ -30,11 +59,10 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
         "keywords": "",
         "recipeYield": raw_recipe.get("servings", 4),
         "tool": [],
-        "recipeIngredient": [
-            ingredient["name"] for ingredient in raw_recipe.get("ingredients", [])
-        ],
+        "recipeIngredient": ingredients,
         "recipeInstructions": [
-            step["text"] for group in raw_recipe.get("instructions", [])
+            convert_fractions(step["text"])
+            for group in raw_recipe.get("instructions", [])
             for step in group.get("steps", [])
         ],
         "nutrition": {"@type": "NutritionInformation"},
