@@ -1,5 +1,6 @@
 import typer
 from typing import List
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -9,6 +10,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 app = typer.Typer(help="URL processor application")
+
+def sanitize_filename(title: str) -> str:
+    """Convert title to filename-safe format using first 5 words."""
+    # Remove special characters and split into words
+    words = ''.join(c if c.isalnum() or c.isspace() else ' ' for c in title).split()
+    # Take first 5 words and join with dashes
+    return '-'.join(words[:5]).lower()
 
 def setup_driver():
     """Setup and return a Chrome webdriver with headless mode."""
@@ -40,12 +48,21 @@ def main(
     )
 ) -> None:
     """Process a list of URLs and print their titles."""
+    # Create output directory
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
+    
     driver = setup_driver()
     try:
         for i, url in enumerate(urls, 1):
             title = get_page_title(driver, url)
             typer.echo(f"{i}. {url}")
             typer.echo(f"   Title: {title}\n")
+            
+            # Save title to file
+            if not title.startswith("Error"):
+                filename = sanitize_filename(title)
+                (output_dir / f"{filename}.txt").write_text(title)
     finally:
         driver.quit()
 
