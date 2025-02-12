@@ -12,6 +12,12 @@ from selenium.webdriver.support import expected_conditions as EC
 import json
 import requests
 
+# Change relative import to absolute import
+try:
+    from recipito.nextcloud_recipe import save_nextcloud_recipe
+except ImportError:
+    from nextcloud_recipe import save_nextcloud_recipe
+
 app = typer.Typer(help="URL processor application")
 
 def sanitize_filename(title: str) -> str:
@@ -80,7 +86,10 @@ def main(
             
             if not title.startswith("Error"):
                 filename = sanitize_filename(title)
+                # Save to json directory
                 (json_dir / f"{filename}.json").write_text(recipe)
+                # Save to nextcloud format
+                save_nextcloud_recipe(filename, recipe)
     finally:
         driver.quit()
 
