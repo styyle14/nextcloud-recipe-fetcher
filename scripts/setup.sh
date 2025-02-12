@@ -6,11 +6,10 @@ PROJECT_ROOT=${SCRIPT_DIR:h}
 
 echo "🚀 Setting up development environment..."
 
-# Check if uv is installed
+# Check if uv is installed globally
 if ! command -v uv &> /dev/null; then
-    echo "❌ uv is not installed. Please install it first:"
-    echo "pip install uv"
-    exit 1
+    echo "📥 Installing uv package installer..."
+    pip install uv
 fi
 
 # Create virtual environment if it doesn't exist
@@ -25,13 +24,13 @@ fi
 echo "🔌 Activating virtual environment..."
 source "${PROJECT_ROOT}/.venv/bin/activate"
 
-# Make all shell scripts executable first
+# Install the project and dev dependencies
+echo "📥 Installing project in development mode..."
+uv pip install -e ".[dev]"
+
+# Make all shell scripts executable
 echo "🔑 Making scripts executable..."
 chmod +x "${SCRIPT_DIR}"/*.sh
-
-# Run the install script
-echo "📥 Installing development dependencies..."
-"${SCRIPT_DIR}/install.sh"
 
 echo "✨ Setup complete! You can now run:"
 echo "  ./scripts/lint.sh  - to run linting"

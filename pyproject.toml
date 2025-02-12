@@ -1,7 +1,7 @@
 [project]
-name = "your-project-name"
+name = "recipito"
 version = "0.1.0"
-description = "Your project description"
+description = "URL title fetcher tool"
 authors = [
     { name = "Your Name", email = "your.email@example.com" }
 ]
@@ -23,6 +23,9 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.scripts]
+recipito = "recipito.main:app"
 
 [tool.ruff]
 line-length = 120
