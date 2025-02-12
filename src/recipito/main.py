@@ -1,6 +1,7 @@
 import typer
 from typing import List
 from pathlib import Path
+import urllib.parse
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -8,6 +9,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import json
+import requests
 
 app = typer.Typer(help="URL processor application")
 
@@ -40,6 +43,19 @@ def get_page_title(driver: webdriver.Chrome, url: str) -> str:
     except Exception as e:
         return f"Error fetching title: {str(e)}"
 
+def get_recipe_content(driver: webdriver.Chrome, url: str) -> str:
+    """Fetch recipe content from justtherecipe.com."""
+    try:
+        recipe_url = f"https://www.justtherecipe.com/extractRecipeAtUrl?url={urllib.parse.quote(url)}"
+        typer.echo(f"   Fetching from: {recipe_url}")
+        response = requests.get(recipe_url)
+        response.raise_for_status()  # Raise exception for bad status codes
+        return json.dumps(response.json(), indent=2)
+    except requests.RequestException as e:
+        return f"Error fetching recipe: {str(e)}"
+    except json.JSONDecodeError as e:
+        return f"Error parsing recipe JSON: {str(e)}"
+
 @app.command()
 def main(
     urls: List[str] = typer.Argument(
@@ -47,8 +63,7 @@ def main(
         help="List of URLs to process",
     )
 ) -> None:
-    """Process a list of URLs and print their titles."""
-    # Create output directory
+    """Process a list of URLs and print their titles and recipes."""
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
     
@@ -56,13 +71,16 @@ def main(
     try:
         for i, url in enumerate(urls, 1):
             title = get_page_title(driver, url)
-            typer.echo(f"{i}. {url}")
-            typer.echo(f"   Title: {title}\n")
+            recipe = get_recipe_content(driver, url)
             
-            # Save title to file
+            typer.echo(f"{i}. {url}")
+            typer.echo(f"   Title: {title}")
+            typer.echo(f"   Recipe extracted: {'Yes' if not recipe.startswith('Error') else 'No'}\n")
+            
             if not title.startswith("Error"):
                 filename = sanitize_filename(title)
-                (output_dir / f"{filename}.txt").write_text(title)
+                content = f"Title: {title}\nURL: {url}\n\nRecipe:\n{recipe}"
+                (output_dir / f"{filename}.txt").write_text(content)
     finally:
         driver.quit()
 

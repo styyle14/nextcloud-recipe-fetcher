@@ -43,4 +43,7 @@ htmlcov/
 coverage.xml
 
 # Output files
-output/ 
+output/
+
+# macOS
+.DS_Store 
