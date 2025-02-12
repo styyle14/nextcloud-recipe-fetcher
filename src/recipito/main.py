@@ -64,8 +64,9 @@ def main(
     )
 ) -> None:
     """Process a list of URLs and print their titles and recipes."""
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
+    # Create output/json directory
+    json_dir = Path("output") / "json"
+    json_dir.mkdir(parents=True, exist_ok=True)
     
     driver = setup_driver()
     try:
@@ -79,8 +80,7 @@ def main(
             
             if not title.startswith("Error"):
                 filename = sanitize_filename(title)
-                content = f"Title: {title}\nURL: {url}\n\nRecipe:\n{recipe}"
-                (output_dir / f"{filename}.txt").write_text(content)
+                (json_dir / f"{filename}.json").write_text(recipe)
     finally:
         driver.quit()
 
