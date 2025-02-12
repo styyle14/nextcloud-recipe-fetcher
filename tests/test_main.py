@@ -1,12 +1,12 @@
 from unittest.mock import Mock, patch
 import pytest
 from typer.testing import CliRunner
-from src.main import app
+from src.recipito.main import app
 
 @pytest.fixture
 def mock_webdriver():
     """Fixture to mock Selenium WebDriver."""
-    with patch('src.main.webdriver.Chrome') as mock_driver:
+    with patch('src.recipito.main.webdriver.Chrome') as mock_driver:
         # Create mock for WebDriverWait
         mock_wait = Mock()
         mock_element = Mock()
@@ -28,7 +28,7 @@ def mock_webdriver():
         )
         
         # Patch WebDriverWait to return our mock
-        with patch('src.main.WebDriverWait', return_value=mock_wait):
+        with patch('src.recipito.main.WebDriverWait', return_value=mock_wait):
             yield mock_driver.return_value
 
 @pytest.fixture

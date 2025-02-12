@@ -25,16 +25,16 @@ fi
 echo "🔌 Activating virtual environment..."
 source "${PROJECT_ROOT}/.venv/bin/activate"
 
-# Install dependencies
+# Make all shell scripts executable first
+echo "🔑 Making scripts executable..."
+chmod +x "${SCRIPT_DIR}"/*.sh
+
+# Run the install script
 echo "📥 Installing development dependencies..."
-uv pip install -e ".[dev]"
+"${SCRIPT_DIR}/install.sh"
 
 echo "✨ Setup complete! You can now run:"
 echo "  ./scripts/lint.sh  - to run linting"
 echo "  ./scripts/test.sh  - to run tests"
-
-# Make all shell scripts executable
-echo "🔑 Making scripts executable..."
-chmod +x "${SCRIPT_DIR}"/*.sh
 
 echo "🎉 All done! Your development environment is ready." 
