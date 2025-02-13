@@ -2,6 +2,7 @@ import json
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock
 from unittest.mock import patch
 
@@ -13,36 +14,42 @@ from recipito.main import main
 
 
 @pytest.fixture
-def mock_requests() -> Generator[Mock, None, None]:
+def mock_recipe() -> dict[str, Any]:
+    """Fixture to provide a mock recipe."""
+    return {
+        "version": "1.0.0",
+        "id": "test-id",
+        "name": "Test Recipe",
+        "sourceUrl": "https://example.com/recipe",
+        "servings": 4,
+        "cookTime": 1800000000,
+        "prepTime": 1800000000,
+        "totalTime": 3600000000,
+        "categories": ["Main Course"],
+        "cuisines": ["American"],
+        "imageUrls": ["https://example.com/image.jpg"],
+        "keywords": ["test"],
+        "ingredients": [{"name": "test ingredient"}],
+        "instructions": [
+            {
+                "steps": [{"text": "test step", "name": "test step", "type": "step"}],
+                "name": "test group",
+                "type": "group",
+            },
+        ],
+        "source": "fromUrl",
+    }
+
+
+@pytest.fixture
+def mock_requests(mock_recipe: dict[str, Any]) -> Generator[Mock, None, None]:
     """Fixture to mock requests."""
     logger.info("Setting up mock requests")
     with patch("recipito.main.requests") as mock_req:
         # Mock successful response
         mock_response = Mock()
         mock_response.text = "<html><title>Test Recipe</title></html>"
-        mock_response.json.return_value = {
-            "version": "1.0.0",
-            "id": "test-id",
-            "name": "Test Recipe",
-            "sourceUrl": "https://example.com/recipe",
-            "servings": 4,
-            "cookTime": 1800000000,
-            "prepTime": 1800000000,
-            "totalTime": 3600000000,
-            "categories": ["Main Course"],
-            "cuisines": ["American"],
-            "imageUrls": ["https://example.com/image.jpg"],
-            "keywords": ["test"],
-            "ingredients": [{"name": "test ingredient"}],
-            "instructions": [
-                {
-                    "steps": [{"text": "test step", "name": "test step", "type": "step"}],
-                    "name": "test group",
-                    "type": "group",
-                },
-            ],
-            "source": "fromUrl",
-        }
+        mock_response.json.return_value = mock_recipe
         mock_req.get.return_value = mock_response
         yield mock_req
     logger.info("Tearing down mock requests")
@@ -83,10 +90,10 @@ def test_error_handling(mock_requests: Mock, tmp_path: Path) -> None:
     json_dir.mkdir(parents=True)
 
     with patch("recipito.main.Path", return_value=json_dir):
-        main(urls=["https://example.com/recipe"], keywords=[])  # Pass arguments by name
+        main(urls=["https://example.com/recipe"], keywords=[])
 
 
-def test_file_saving(tmp_path: Path) -> None:
+def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
     """Test that files are saved correctly."""
     logger.info("Testing file saving functionality")
 
@@ -98,30 +105,6 @@ def test_file_saving(tmp_path: Path) -> None:
     # Create json directory
     json_dir = output_dir / "json"
     json_dir.mkdir(parents=True)
-
-    mock_recipe = {
-        "version": "1.0.0",
-        "id": "test-id",
-        "name": "Test Recipe",
-        "sourceUrl": "https://example.com/recipe",
-        "servings": 4,
-        "cookTime": 1800000000,
-        "prepTime": 1800000000,
-        "totalTime": 3600000000,
-        "categories": ["Main Course"],
-        "cuisines": ["American"],
-        "imageUrls": ["https://example.com/image.jpg"],
-        "keywords": ["test"],
-        "ingredients": [{"name": "test ingredient"}],
-        "instructions": [
-            {
-                "steps": [{"text": "test step", "name": "test step", "type": "step"}],
-                "name": "test group",
-                "type": "group",
-            },
-        ],
-        "source": "fromUrl",
-    }
 
     recipe_title = "Test Recipe"
     sanitized_title = recipe_title  # This matches what sanitize_filename will produce
