@@ -40,7 +40,8 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
         return f"PT{hours}H{minutes}M{seconds}S"
 
     # Convert unicode fractions to standard fractions
-    def convert_fractions(text: str) -> str:
+    def convert_characters(text: str) -> str:
+        """Convert unicode fractions and symbols to standard text."""
         fraction_map = {
             "\u00bc": "1/4",
             "\u00bd": "1/2",
@@ -57,13 +58,14 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
             "\u215c": "3/8",
             "\u215d": "5/8",
             "\u215e": "7/8",
+            "\u00b0": "°",  # Convert unicode degree symbol to standard degree symbol
         }
-        for unicode_char, fraction in fraction_map.items():
-            text = text.replace(unicode_char, fraction)
+        for unicode_char, replacement in fraction_map.items():
+            text = text.replace(unicode_char, replacement)
         return text
 
     # Convert ingredients with fraction handling
-    ingredients = [convert_fractions(ingredient.name) for ingredient in recipe.ingredients]
+    ingredients = [convert_characters(ingredient.name) for ingredient in recipe.ingredients]
 
     # Create and validate Nextcloud recipe format
     nextcloud_recipe = NextcloudRecipe(
@@ -80,7 +82,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
         recipeYield=recipe.servings,
         tool=[],
         recipeIngredient=ingredients,
-        recipeInstructions=[convert_fractions(step.text) for group in recipe.instructions for step in group.steps],
+        recipeInstructions=[convert_characters(step.text) for group in recipe.instructions for step in group.steps],
         nutrition=JustTheRecipeNutritionInfo(),
         dateModified=now,
         dateCreated=now,
