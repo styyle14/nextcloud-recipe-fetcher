@@ -33,7 +33,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
     def format_time(ns: int) -> str:
         if not ns:
             return "PT0H0M0S"
-        seconds = ns // 1_000_000_000
+        seconds = ns // 1_000_000
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         seconds = seconds % 60
