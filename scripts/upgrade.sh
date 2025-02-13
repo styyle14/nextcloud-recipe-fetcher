@@ -13,15 +13,6 @@ fi
 # Activate virtual environment
 source "${PROJECT_ROOT}/.venv/bin/activate"
 
-# Run ruff for linting and formatting
-echo "Running ruff..."
-ruff check src/
-ruff format src/
-
-# Run pyright for type checking
-echo -e "\nRunning pyright..."
-pyright src/
-
-# Run tests with coverage
-echo -e "\nRunning tests..."
-pytest tests/ --cov=src/ --cov-report=term-missing 
+# Run pyupgrade on all Python files in src/
+echo "Running pyupgrade..."
+find "${PROJECT_ROOT}/src" -name "*.py" -exec pyupgrade --py39-plus {} \; 

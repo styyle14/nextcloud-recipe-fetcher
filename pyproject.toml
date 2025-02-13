@@ -19,9 +19,10 @@ requires-python = ">=3.9"
 dev = [
     "pytest>=7.0.0",
     "ruff>=0.2.0",
-    "mypy>=1.0.0",
     "pytest-cov>=4.1.0",
-    "types-requests>=2.31.0"
+    "types-requests>=2.31.0",
+    "pyright>=1.1.350",
+    "pyupgrade>=3.15.0"
 ]
 
 [build-system]
@@ -32,11 +33,115 @@ build-backend = "hatchling.build"
 recipito = "recipito.main:app"
 
 [tool.ruff]
-line-length = 120
+# Target Python 3.9+
 target-version = "py39"
-select = ["E", "F", "B", "I", "UP"]
+# Line length matches black default
+line-length = 120
+
+[tool.ruff.lint]
+# Enable all rules by default, then configure specific rule sets
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "YTT", # flake8-2020
+    "ANN", # flake8-annotations
+    "S",   # flake8-bandit
+    "BLE", # flake8-blind-except
+    "FBT", # flake8-boolean-trap
+    "COM", # flake8-commas
+    "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "T10", # flake8-debugger
+    "DJ",  # flake8-django
+    "EM",  # flake8-errmsg
+    "EXE", # flake8-executable
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "T20", # flake8-print
+    "PYI", # flake8-pyi
+    "PT",  # flake8-pytest-style
+    "Q",   # flake8-quotes
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "TCH", # flake8-type-checking
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "ERA", # eradicate
+    "PD",  # pandas-vet
+    "PGH", # pygrep-hooks
+    "PL",  # pylint
+    "TRY", # tryceratops
+    "RUF", # ruff-specific rules
+]
+
+# Keep existing rules but add some ignores
+ignore = [
+    "N815",    # Allow mixedCase variables in models (matches JSON schema)
+    "ANN401",  # Allow Any in specific cases
+    "S113",    # Allow requests without timeout for simplicity
+    "BLE001",  # Allow catching Exception for error handling
+    "B008",    # Allow Typer argument defaults
+    "COM812",  # Allow trailing comma style to be handled by formatter
+]
+
+# Allow autofix behavior for specific rules
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Exclude files/directories
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+# Configure flake8-quotes
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "double"
+multiline-quotes = "double"
+
+# Configure flake8-tidy-imports
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*.py" = ["S101"]  # Allow assert statements in test files
+
+# Configure mccabe complexity checking
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# Configure isort
+[tool.ruff.lint.isort]
+known-first-party = ["recipito"]
+force-single-line = true
+lines-between-types = 1
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra -q" 
+addopts = "-ra -q"
+
+[tool.pyright]
+pythonVersion = "3.9"
+include = ["src"]
+exclude = ["**/node_modules", "**/__pycache__"]
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false 

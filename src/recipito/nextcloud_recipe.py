@@ -1,11 +1,30 @@
-from pathlib import Path
 import json
 import shutil
-from datetime import datetime, timezone
-from .models import JustTheRecipe, NextcloudRecipe
 
-def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
+from datetime import datetime
+from datetime import timezone
+from pathlib import Path
+from typing import Any
+
+from recipito.logger import logger
+
+from .models import JustTheRecipe
+from .models import JustTheRecipeNutritionInfo
+from .models import NextcloudRecipe
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder for datetime objects."""
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, datetime):
+            return o.strftime("%Y-%m-%dT%H:%M:%S+0000")
+        return super().default(o)
+
+
+def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
     """Convert raw recipe JSON to Nextcloud recipes format."""
+    logger.info("Converting recipe to Nextcloud format")
     # Validate input recipe format
     recipe = JustTheRecipe(**raw_recipe)
     now = datetime.now(timezone.utc)
@@ -13,7 +32,7 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
     # Convert time from nanoseconds to "PTxHyMzS" format
     def format_time(ns: int) -> str:
         if not ns:
-            return None
+            return "PT0H0M0S"
         seconds = ns // 1_000_000_000
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
@@ -23,31 +42,28 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
     # Convert unicode fractions to standard fractions
     def convert_fractions(text: str) -> str:
         fraction_map = {
-            '\u00bc': '1/4',
-            '\u00bd': '1/2',
-            '\u00be': '3/4',
-            '\u2153': '1/3',
-            '\u2154': '2/3',
-            '\u2155': '1/5',
-            '\u2156': '2/5',
-            '\u2157': '3/5',
-            '\u2158': '4/5',
-            '\u2159': '1/6',
-            '\u215a': '5/6',
-            '\u215b': '1/8',
-            '\u215c': '3/8',
-            '\u215d': '5/8',
-            '\u215e': '7/8',
+            "\u00bc": "1/4",
+            "\u00bd": "1/2",
+            "\u00be": "3/4",
+            "\u2153": "1/3",
+            "\u2154": "2/3",
+            "\u2155": "1/5",
+            "\u2156": "2/5",
+            "\u2157": "3/5",
+            "\u2158": "4/5",
+            "\u2159": "1/6",
+            "\u215a": "5/6",
+            "\u215b": "1/8",
+            "\u215c": "3/8",
+            "\u215d": "5/8",
+            "\u215e": "7/8",
         }
         for unicode_char, fraction in fraction_map.items():
             text = text.replace(unicode_char, fraction)
         return text
 
     # Convert ingredients with fraction handling
-    ingredients = [
-        convert_fractions(ingredient.name)
-        for ingredient in recipe.ingredients
-    ]
+    ingredients = [convert_fractions(ingredient.name) for ingredient in recipe.ingredients]
 
     # Create and validate Nextcloud recipe format
     nextcloud_recipe = NextcloudRecipe(
@@ -64,46 +80,46 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
         recipeYield=recipe.servings,
         tool=[],
         recipeIngredient=ingredients,
-        recipeInstructions=[
-            convert_fractions(step.text)
-            for group in recipe.instructions
-            for step in group.steps
-        ],
-        nutrition={"@type": "NutritionInformation"},
+        recipeInstructions=[convert_fractions(step.text) for group in recipe.instructions for step in group.steps],
+        nutrition=JustTheRecipeNutritionInfo(),
         dateModified=now,
         dateCreated=now,
         datePublished=None,
         printImage=True,
-        imageUrl="/apps/cookbook/webapp/recipes/{}/image?size=full"
+        imageUrl="/apps/cookbook/webapp/recipes/{}/image?size=full",
     )
 
     return nextcloud_recipe.model_dump(by_alias=True)
 
+
 def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
     """
     Save recipe in Nextcloud recipes format.
-    
+
     Args:
         title: The webpage title to use for directory name
         recipe_json: The JSON string containing recipe data
     """
+    logger.info("Saving recipe: %s", title)
     # Create base directory for Nextcloud recipes
     nextcloud_dir = Path("output") / "nextcloud_recipes"
     nextcloud_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create recipe directory using sanitized title
     recipe_dir = nextcloud_dir / title
-    
+
     # Remove existing directory if it exists
     if recipe_dir.exists():
         shutil.rmtree(recipe_dir)
-    
+
     recipe_dir.mkdir()
-    
+
     # Parse raw JSON and convert to Nextcloud format
     raw_recipe = json.loads(recipe_json)
     nextcloud_recipe = convert_to_nextcloud_format(raw_recipe)
-    
-    # Save recipe.json
+
+    # Save recipe.json with custom encoder for datetime
     recipe_path = recipe_dir / "recipe.json"
-    recipe_path.write_text(json.dumps(nextcloud_recipe, indent=2)) 
+    recipe_path.write_text(json.dumps(nextcloud_recipe, indent=2, cls=DateTimeEncoder))
+
+    logger.info("Recipe saved successfully")

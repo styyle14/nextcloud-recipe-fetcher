@@ -13,15 +13,11 @@ fi
 # Activate virtual environment
 source "${PROJECT_ROOT}/.venv/bin/activate"
 
-# Run ruff for linting and formatting
-echo "Running ruff..."
-ruff check src/
-ruff format src/
+# Run ruff to fix formatting and linting issues
+echo "Running ruff to fix issues..."
+ruff check --fix src/ tests/
+ruff format src/ tests/
 
-# Run pyright for type checking
-echo -e "\nRunning pyright..."
-pyright src/
-
-# Run tests with coverage
-echo -e "\nRunning tests..."
-pytest tests/ --cov=src/ --cov-report=term-missing 
+# Show remaining issues that couldn't be auto-fixed
+echo -e "\nRemaining issues:"
+ruff check src/ tests/ 
