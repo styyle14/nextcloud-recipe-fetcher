@@ -15,9 +15,12 @@ source "${PROJECT_ROOT}/.venv/bin/activate"
 
 # Run ruff to fix formatting and linting issues
 echo "Running ruff to fix issues..."
-ruff check --fix src/ tests/
-ruff format src/ tests/
+ruff check --fix .
+
+# Run ruff format
+echo -e "\nRunning ruff format..."
+ruff format .
 
 # Show remaining issues that couldn't be auto-fixed
 echo -e "\nRemaining issues:"
-ruff check src/ tests/ 
+ruff check . 

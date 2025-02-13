@@ -1,28 +1,44 @@
 """Script to run tests with coverage."""
+
 import subprocess
 import sys
+
 from pathlib import Path
 
-def main():
+
+def main() -> None:
     """Run pytest with coverage reporting."""
     project_root = Path(__file__).parent.parent
-    
-    print("Running tests with coverage...")
-    result = subprocess.run([
-        sys.executable,  # Use the current Python interpreter
-        "-m",  # Run module as script
-        "pytest",
-        "--cov=src",
-        "--cov-report=term-missing",
-        "--cov-report=html",
-        "tests/",
-    ], cwd=project_root)
-    
+
+    sys.stdout.write("Running tests with coverage...\n")
+    result = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--cov=src",
+            "--cov-report=term-missing",
+            "--cov-report=html",
+            "tests/",
+        ],
+        cwd=project_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    # Print outputs
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+
     if result.returncode == 0:
-        print("\n✅ All tests passed!")
+        sys.stdout.write("\n✅ All tests passed!\n")
     else:
-        print("\n❌ Tests failed!")
-        exit(1)
+        sys.stdout.write("\n❌ Tests failed!\n")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    main() 
+    main()

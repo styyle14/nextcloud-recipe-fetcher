@@ -1,16 +1,20 @@
 import json
 import shutil
-import requests
 
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
 from typing import Any
+from typing import Optional
+
+import requests
 
 from recipito.logger import logger
 
 from .models import JustTheRecipe
+from .models import JustTheRecipeInstructionGroup
 from .models import JustTheRecipeNutritionInfo
+from .models import JustTheRecipeStep
 from .models import NextcloudRecipe
 
 
@@ -65,6 +69,16 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
             text = text.replace(unicode_char, replacement)
         return text
 
+    # Safely handle instructions with type checking
+    instructions: list[str] = []
+    for group in recipe.instructions:
+        if isinstance(group, JustTheRecipeInstructionGroup) and group.steps:
+            for step in group.steps:
+                if step.text:
+                    instructions.append(convert_characters(step.text))
+        elif isinstance(group, JustTheRecipeStep) and group.text:
+            instructions.append(convert_characters(group.text))
+
     # Convert ingredients with fraction handling
     ingredients = [convert_characters(ingredient.name) for ingredient in recipe.ingredients]
 
@@ -83,7 +97,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
         recipeYield=recipe.servings,
         tool=[],
         recipeIngredient=ingredients,
-        recipeInstructions=[convert_characters(step.text) for group in recipe.instructions for step in group.steps],
+        recipeInstructions=instructions,
         nutrition=JustTheRecipeNutritionInfo(),
         dateModified=now,
         dateCreated=now,
@@ -95,7 +109,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
     return nextcloud_recipe.model_dump(by_alias=True)
 
 
-def save_nextcloud_recipe(title: str, recipe_json: str, keywords: list[str] = None) -> None:
+def save_nextcloud_recipe(title: str, recipe_json: str, keywords: Optional[list[str]] = None) -> None:
     """
     Save recipe in Nextcloud recipes format.
 
@@ -121,11 +135,11 @@ def save_nextcloud_recipe(title: str, recipe_json: str, keywords: list[str] = No
     # Parse raw JSON and convert to Nextcloud format
     raw_recipe = json.loads(recipe_json)
     nextcloud_data = convert_to_nextcloud_format(raw_recipe)
-    
+
     # Add keywords if provided
     if keywords:
         nextcloud_data["keywords"] = ", ".join(keywords)
-    
+
     nextcloud_recipe = NextcloudRecipe(**nextcloud_data)
 
     # Save recipe.json with custom encoder for datetime
@@ -139,7 +153,7 @@ def save_nextcloud_recipe(title: str, recipe_json: str, keywords: list[str] = No
             logger.info("Downloading image from: %s", image_url)
             response = requests.get(image_url, timeout=30)
             response.raise_for_status()
-            
+
             # Determine image extension from Content-Type or URL
             content_type = response.headers.get("Content-Type", "")
             if "jpeg" in content_type or "jpg" in content_type:
@@ -156,16 +170,16 @@ def save_nextcloud_recipe(title: str, recipe_json: str, keywords: list[str] = No
                 else:
                     logger.warning("Unknown image type: %s, defaulting to .jpg", content_type)
                     ext = ".jpg"
-            
+
             # Save the image as full.<ext>
             image_path = recipe_dir / f"full{ext}"
             image_path.write_bytes(response.content)
             logger.info("Image saved to: %s", image_path)
-            
+
             # Update the recipe.json with the image path
             nextcloud_recipe.image = f"full{ext}"
             recipe_path.write_text(nextcloud_recipe.model_dump_json())
-            
+
         except Exception as e:
             logger.error("Failed to download image: %s", e)
 

@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 from typing import Any
 from typing import Optional
+from typing import Union
+from typing import cast
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -50,10 +52,10 @@ class JustTheRecipeStep(BaseModel):
     """Represents a single step in recipe instructions."""
 
     name: str
-    text: str | None = None  # Make text optional
+    text: Union[str, None] = None
     type: str = "step"
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         # If text is not provided, use name as text
         if "text" not in data and "name" in data:
             data["text"] = data["name"]
@@ -63,11 +65,11 @@ class JustTheRecipeStep(BaseModel):
 class JustTheRecipeInstructionGroup(BaseModel):
     """Represents a group of related recipe steps."""
 
-    steps: list[JustTheRecipeStep] | None = None  # Make steps optional
+    steps: Union[list[JustTheRecipeStep], None] = None
     name: str
     type: str = "group"
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         # If steps is not provided but we have name/type, create a single step
         if not data.get("steps") and "name" in data:
             data["steps"] = [{"name": data["name"], "type": "step"}]
@@ -96,23 +98,29 @@ class JustTheRecipe(BaseModel):
     imageUrls: list[str]
     keywords: list[str]
     ingredients: list[JustTheRecipeIngredient]
-    instructions: list[JustTheRecipeInstructionGroup | JustTheRecipeStep]  # Allow either type
+    instructions: list[Union[JustTheRecipeInstructionGroup, JustTheRecipeStep]]
     source: str = "fromUrl"
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         # Convert simple instruction steps to groups if needed
         if "instructions" in data:
-            instructions = []
+            instructions: list[dict[str, Any]] = []
             for instr in data["instructions"]:
                 if isinstance(instr, dict) and "steps" not in instr:
-                    # Convert single step to group
-                    instructions.append({
-                        "steps": [instr],
-                        "name": instr.get("name", ""),
-                        "type": "group"
-                    })
+                    # Convert single step to group with explicit typing
+                    instruction_dict = cast(dict[str, Any], instr)  # Cast to known type
+                    name_raw: str = instruction_dict.get("name", "")  # Default to empty string
+
+                    group_data: dict[str, Any] = {
+                        "steps": [instruction_dict],
+                        "name": name_raw,
+                        "type": "group",
+                    }
+                    instructions.append(group_data)
                 else:
-                    instructions.append(instr)
+                    # Cast the instruction to ensure type safety
+                    typed_instr = cast(dict[str, Any], instr)
+                    instructions.append(typed_instr)
             data["instructions"] = instructions
         super().__init__(**data)
 
@@ -146,17 +154,15 @@ class NextcloudRecipe(BaseModel):
     def model_dump_json(self, **kwargs: Any) -> str:
         """Override JSON serialization to handle datetime."""
         # Extract json.dumps kwargs
-        json_kwargs = {
-            "indent": kwargs.pop("indent", 2)
-        }
-        
+        json_kwargs = {"indent": kwargs.pop("indent", 2)}
+
         # Get model data with remaining kwargs
         data = self.model_dump(by_alias=True, **kwargs)
-        
+
         # Format datetime fields
         for field in ["dateModified", "dateCreated", "datePublished"]:
             if field in data and data[field] is not None:
                 data[field] = data[field].strftime("%Y-%m-%dT%H:%M:%S+0000")
-        
+
         # Return JSON string
         return json.dumps(data, **json_kwargs)

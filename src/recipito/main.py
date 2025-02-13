@@ -13,34 +13,37 @@ from recipito.nextcloud_recipe import save_nextcloud_recipe
 
 app = typer.Typer(help="URL processor application")
 
+# Add constant for max filename length
+MAX_FILENAME_LENGTH = 75
+
 
 def sanitize_filename(title: str) -> str:
     """
     Convert title to a valid filename across platforms.
-    
+
     - Remove invalid filename characters
-    - Limit to 75 characters
+    - Limit to MAX_FILENAME_LENGTH characters
     - Ensure compatibility with Windows, Mac, and Linux
     """
     # Characters not allowed in filenames across platforms
     invalid_chars = '<>:"/\\|?*'
-    
+
     # Replace invalid chars with dash
     clean_title = title
     for char in invalid_chars:
         clean_title = clean_title.replace(char, "-")
-        
+
     # Replace multiple dashes with single dash
     while "--" in clean_title:
         clean_title = clean_title.replace("--", "-")
-    
+
     # Remove leading/trailing dashes and spaces
     clean_title = clean_title.strip("- ")
-    
-    # Limit length to 75 chars
-    if len(clean_title) > 75:
-        clean_title = clean_title[:75].rstrip("-")
-    
+
+    # Limit length to MAX_FILENAME_LENGTH chars
+    if len(clean_title) > MAX_FILENAME_LENGTH:
+        clean_title = clean_title[:MAX_FILENAME_LENGTH].rstrip("-")
+
     return clean_title
 
 
@@ -77,12 +80,13 @@ def get_recipe_content(url: str) -> str:
 @app.command()
 def main(
     urls: list[str] = typer.Argument(
-        None,  # Use None instead of ... for default
+        None,
         help="List of URLs to process",
     ),
     keywords: list[str] = typer.Option(
         [],
-        "--keyword", "-k",
+        "--keyword",
+        "-k",
         help="Keywords to add to the recipe (can be specified multiple times)",
     ),
 ) -> None:
