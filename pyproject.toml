@@ -9,7 +9,9 @@ dependencies = [
     "typer>=0.9.0",
     "selenium>=4.18.0",
     "webdriver-manager>=4.0.1",
-    "requests>=2.31.0"
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "pydantic>=2.6.0"
 ]
 requires-python = ">=3.9"
 
