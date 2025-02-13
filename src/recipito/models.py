@@ -2,12 +2,12 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-class RecipeItem(BaseModel):
+class JustTheRecipeItem(BaseModel):
     """Represents a recipe ingredient item's properties."""
     density: float
     state: str
 
-class RecipeQuantity(BaseModel):
+class JustTheRecipeQuantity(BaseModel):
     """Represents a quantity in a recipe."""
     start: int
     end: int
@@ -15,7 +15,7 @@ class RecipeQuantity(BaseModel):
     unit: int = 0
     plurality_dependents: List[Dict[str, str]] = Field(default_factory=list)
 
-class RecipeUnit(BaseModel):
+class JustTheRecipeUnit(BaseModel):
     """Represents a unit of measurement in a recipe."""
     start: int
     end: int
@@ -23,32 +23,32 @@ class RecipeUnit(BaseModel):
     display_type: str
     item: int = 0
 
-class RecipeIngredient(BaseModel):
+class JustTheRecipeIngredient(BaseModel):
     """Represents an ingredient in a recipe."""
     name: str
-    items: List[RecipeItem] = Field(default_factory=list)
-    quantities: List[RecipeQuantity] = Field(default_factory=list)
-    units: List[RecipeUnit] = Field(default_factory=list)
+    items: List[JustTheRecipeItem] = Field(default_factory=list)
+    quantities: List[JustTheRecipeQuantity] = Field(default_factory=list)
+    units: List[JustTheRecipeUnit] = Field(default_factory=list)
     sizes: List[Any] = Field(default_factory=list)
     type: str = "default"
 
-class RecipeStep(BaseModel):
+class JustTheRecipeStep(BaseModel):
     """Represents a single step in recipe instructions."""
     name: str
     text: str
     type: str = "step"
 
-class RecipeInstructionGroup(BaseModel):
+class JustTheRecipeInstructionGroup(BaseModel):
     """Represents a group of related recipe steps."""
-    steps: List[RecipeStep]
+    steps: List[JustTheRecipeStep]
     name: str
     type: str = "group"
 
-class NutritionInfo(BaseModel):
+class JustTheRecipeNutritionInfo(BaseModel):
     """Represents nutrition information."""
     type: str = Field(alias="@type", default="NutritionInformation")
 
-class Recipe(BaseModel):
+class JustTheRecipe(BaseModel):
     """Represents a complete recipe."""
     version: str = "1.0.0"
     id: str
@@ -62,8 +62,8 @@ class Recipe(BaseModel):
     cuisines: List[str]
     imageUrls: List[str]
     keywords: List[str]
-    ingredients: List[RecipeIngredient]
-    instructions: List[RecipeInstructionGroup]
+    ingredients: List[JustTheRecipeIngredient]
+    instructions: List[JustTheRecipeInstructionGroup]
     source: str = "fromUrl"
 
 class NextcloudRecipe(BaseModel):
@@ -82,7 +82,7 @@ class NextcloudRecipe(BaseModel):
     tool: List[str] = Field(default_factory=list)
     recipeIngredient: List[str]
     recipeInstructions: List[str]
-    nutrition: NutritionInfo
+    nutrition: JustTheRecipeNutritionInfo
     context: str = Field(alias="@context", default="http://schema.org")
     type: str = Field(alias="@type", default="Recipe")
     dateModified: datetime

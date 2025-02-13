@@ -2,11 +2,14 @@ from pathlib import Path
 import json
 import shutil
 from datetime import datetime, timezone
+from .models import JustTheRecipe, NextcloudRecipe
 
 def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
     """Convert raw recipe JSON to Nextcloud recipes format."""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    
+    # Validate input recipe format
+    recipe = JustTheRecipe(**raw_recipe)
+    now = datetime.now(timezone.utc)
+
     # Convert time from nanoseconds to "PTxHyMzS" format
     def format_time(ns: int) -> str:
         if not ns:
@@ -42,38 +45,39 @@ def convert_to_nextcloud_format(raw_recipe: dict) -> dict:
 
     # Convert ingredients with fraction handling
     ingredients = [
-        convert_fractions(ingredient["name"])
-        for ingredient in raw_recipe.get("ingredients", [])
+        convert_fractions(ingredient.name)
+        for ingredient in recipe.ingredients
     ]
 
-    return {
-        "id": str(raw_recipe.get("id", ""))[:5],
-        "name": raw_recipe.get("name", ""),
-        "description": "",
-        "url": raw_recipe.get("sourceUrl", ""),
-        "image": "",
-        "prepTime": format_time(raw_recipe.get("prepTime", 0)),
-        "cookTime": format_time(raw_recipe.get("cookTime", 0)),
-        "totalTime": format_time(raw_recipe.get("totalTime", 0)),
-        "recipeCategory": ", ".join(raw_recipe.get("categories", [])),
-        "keywords": "",
-        "recipeYield": raw_recipe.get("servings", 4),
-        "tool": [],
-        "recipeIngredient": ingredients,
-        "recipeInstructions": [
-            convert_fractions(step["text"])
-            for group in raw_recipe.get("instructions", [])
-            for step in group.get("steps", [])
+    # Create and validate Nextcloud recipe format
+    nextcloud_recipe = NextcloudRecipe(
+        id=str(recipe.id)[:5],
+        name=recipe.name,
+        description="",
+        url=recipe.sourceUrl,
+        image="",
+        prepTime=format_time(recipe.prepTime),
+        cookTime=format_time(recipe.cookTime),
+        totalTime=format_time(recipe.totalTime),
+        recipeCategory=", ".join(recipe.categories),
+        keywords="",
+        recipeYield=recipe.servings,
+        tool=[],
+        recipeIngredient=ingredients,
+        recipeInstructions=[
+            convert_fractions(step.text)
+            for group in recipe.instructions
+            for step in group.steps
         ],
-        "nutrition": {"@type": "NutritionInformation"},
-        "@context": "http://schema.org",
-        "@type": "Recipe",
-        "dateModified": now,
-        "dateCreated": now,
-        "datePublished": None,
-        "printImage": True,
-        "imageUrl": "/apps/cookbook/webapp/recipes/{}/image?size=full"
-    }
+        nutrition={"@type": "NutritionInformation"},
+        dateModified=now,
+        dateCreated=now,
+        datePublished=None,
+        printImage=True,
+        imageUrl="/apps/cookbook/webapp/recipes/{}/image?size=full"
+    )
+
+    return nextcloud_recipe.model_dump(by_alias=True)
 
 def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
     """
