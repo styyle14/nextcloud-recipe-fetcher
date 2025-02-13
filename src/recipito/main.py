@@ -10,12 +10,12 @@ import typer
 from bs4 import BeautifulSoup
 
 from recipito.logger import logger
-from recipito.nextcloud_recipe import save_nextcloud_recipe
+from recipito.utils import save_nextcloud_recipe
 
 app = typer.Typer(help="URL processor application")
 
 # Add constant for max filename length
-MAX_FILENAME_LENGTH = 75
+MAX_FILENAME_LENGTH = 100
 
 
 def sanitize_filename(title: str) -> str:

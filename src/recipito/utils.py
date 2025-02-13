@@ -1,7 +1,148 @@
 """Utility functions for recipe processing."""
 
+import json
 
-def convert_characters(text: str) -> str:
-    """Convert special characters in text to their standard form."""
-    # Add any special character conversions here
-    return text
+from datetime import UTC
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import requests
+
+from recipito.logger import logger
+from recipito.text import convert_characters  # Updated import
+
+from .models import JustTheRecipe
+from .models import JustTheRecipeInstructionGroup
+from .models import JustTheRecipeNutritionInfo
+from .models import JustTheRecipeStep
+from .models import NextcloudRecipe
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder for datetime objects."""
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, datetime):
+            return o.strftime("%Y-%m-%dT%H:%M:%S+0000")
+        return super().default(o)
+
+
+def convert_to_nextcloud_format(raw_recipe: dict[str, Any], category: str) -> dict[str, Any]:
+    """Convert raw recipe JSON to Nextcloud recipes format."""
+    logger.info("Converting recipe to Nextcloud format")
+    # Validate input recipe format
+    recipe = JustTheRecipe(**raw_recipe)
+    now = datetime.now(UTC)
+
+    # Convert time from nanoseconds to "PTxHyMzS" format
+    def format_time(ns: int) -> str:
+        if not ns:
+            return "PT0H0M0S"
+        seconds = ns // 1_000_000
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        seconds = seconds % 60
+        return f"PT{hours}H{minutes}M{seconds}S"
+
+    # Safely handle instructions with type checking
+    instructions: list[str] = []
+    for group in recipe.instructions:
+        if isinstance(group, JustTheRecipeInstructionGroup) and group.steps:
+            for step in group.steps:
+                if step.text:
+                    instructions.append(convert_characters(step.text))
+        elif isinstance(group, JustTheRecipeStep) and group.text:
+            instructions.append(convert_characters(group.text))
+
+    # Convert ingredients with fraction handling
+    ingredients = [convert_characters(ingredient.name) for ingredient in recipe.ingredients]
+
+    # Create and validate Nextcloud recipe format
+    nextcloud_recipe = NextcloudRecipe(
+        id=str(recipe.id)[:5],
+        name=recipe.name,
+        description="",
+        url=recipe.sourceUrl,
+        image="",
+        prepTime=format_time(recipe.prepTime),
+        cookTime=format_time(recipe.cookTime),
+        totalTime=format_time(recipe.totalTime),
+        recipeCategory=category,
+        keywords="",
+        recipeYield=recipe.servings,
+        tool=[],
+        recipeIngredient=ingredients,
+        recipeInstructions=instructions,
+        nutrition=JustTheRecipeNutritionInfo(),
+        dateModified=now,
+        dateCreated=now,
+        datePublished=None,
+        printImage=True,
+        imageUrl="/apps/cookbook/webapp/recipes/{}/image?size=full",
+    )
+
+    return nextcloud_recipe.model_dump(by_alias=True)
+
+
+def save_nextcloud_recipe(
+    title: str,
+    recipe_json: str,
+    keywords: list[str],
+    category: str = "Main Course",
+) -> None:
+    """Save recipe in Nextcloud format."""
+    recipe_data = json.loads(recipe_json)
+    nextcloud_data = convert_to_nextcloud_format(recipe_data, category)
+
+    # Add keywords if provided
+    if keywords:
+        nextcloud_data["keywords"] = ", ".join(keywords)
+
+    # Create Nextcloud recipe directory
+    output_dir = Path("output")
+    recipe_dir = output_dir / "nextcloud_recipes" / title
+    recipe_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save recipe.json with custom encoder for datetime
+    recipe_path = recipe_dir / "recipe.json"
+    recipe_path.write_text(json.dumps(nextcloud_data, indent=2, cls=DateTimeEncoder))
+
+    # Try to download and save the first image
+    if recipe_data.get("imageUrls") and recipe_data["imageUrls"]:
+        image_url = recipe_data["imageUrls"][0]
+        try:
+            logger.info("Downloading image from: %s", image_url)
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+
+            # Determine image extension from Content-Type or URL
+            content_type = response.headers.get("Content-Type", "")
+            if "jpeg" in content_type or "jpg" in content_type:
+                ext = ".jpg"
+            elif "png" in content_type:
+                ext = ".png"
+            elif "webp" in content_type:
+                ext = ".webp"
+            else:
+                # Fallback to extension from URL
+                url_ext = image_url.split(".")[-1].lower()
+                if url_ext in ["jpg", "jpeg", "png", "webp"]:
+                    ext = f".{url_ext}"
+                else:
+                    logger.warning("Unknown image type: %s, defaulting to .jpg", content_type)
+                    ext = ".jpg"
+
+            # Save the image as full.<ext>
+            image_path = recipe_dir / f"full{ext}"
+            image_path.write_bytes(response.content)
+            logger.info("Image saved to: %s", image_path)
+
+            # Update the recipe.json with the image path
+            nextcloud_data["image"] = f"full{ext}"
+            recipe_path.write_text(json.dumps(nextcloud_data, indent=2, cls=DateTimeEncoder))
+
+        except Exception as e:
+            logger.error("Failed to download image: %s", e)
+
+    logger.info("Recipe saved successfully")

@@ -136,7 +136,7 @@ def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
 
     with (
         patch("recipito.main.Path", return_value=output_dir),
-        patch("recipito.nextcloud_recipe.Path", return_value=output_dir),
+        patch("recipito.utils.Path", return_value=output_dir),
         patch("recipito.main.get_page_title", return_value=recipe_title),
         patch("recipito.main.get_recipe_content", return_value=json.dumps(mock_recipe)),
     ):
@@ -184,7 +184,7 @@ def test_file_saving_with_category(tmp_path: Path, mock_recipe: dict[str, Any]) 
 
     with (
         patch("recipito.main.Path", return_value=output_dir),
-        patch("recipito.nextcloud_recipe.Path", return_value=output_dir),
+        patch("recipito.utils.Path", return_value=output_dir),
         patch("recipito.main.get_page_title", return_value=recipe_title),
         patch("recipito.main.get_recipe_content", return_value=json.dumps(mock_recipe)),
     ):

@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field
 
-from recipito.utils import convert_characters
+from recipito.text import convert_characters
 
 from .just_the_recipe import JustTheRecipe
 from .just_the_recipe import JustTheRecipeInstructionGroup
