@@ -9,27 +9,31 @@ from pydantic import Field
 class JustTheRecipeStep(BaseModel):
     """Represents a single step in recipe instructions."""
 
-    name: str
     text: str | None = None
+    name: str | None = None  # Make name optional
     type: str = "step"
 
-    def __init__(self, **data: Any) -> None:
-        if "text" not in data and "name" in data:
-            data["text"] = data["name"]
-        super().__init__(**data)
+    def model_post_init(self, __context: Any) -> None:
+        """Ensure either text or name is present."""
+        if self.text is None and self.name is None:
+            raise ValueError("Either text or name must be provided")
+        if self.text is None:
+            self.text = self.name
+        if self.name is None:
+            self.name = self.text
 
 
 class JustTheRecipeInstructionGroup(BaseModel):
     """Represents a group of related recipe steps."""
 
     steps: list[JustTheRecipeStep] | None = None
-    name: str
+    name: str | None = None  # Make name optional
     type: str = "group"
 
-    def __init__(self, **data: Any) -> None:
-        if not data.get("steps") and "name" in data:
-            data["steps"] = [{"name": data["name"], "type": "step"}]
-        super().__init__(**data)
+    def model_post_init(self, __context: Any) -> None:
+        """Convert single step to list if needed."""
+        if not self.steps and self.name:
+            self.steps = [JustTheRecipeStep(name=self.name, type="step")]
 
 
 class JustTheRecipeIngredient(BaseModel):
@@ -57,7 +61,7 @@ class JustTheRecipeNutritionInfo(BaseModel):
 
 
 class JustTheRecipe(BaseModel):
-    """Represents a complete recipe."""
+    """Represents a recipe from justtherecipe.com."""
 
     version: str = "1.0.0"
     id: str
@@ -72,30 +76,29 @@ class JustTheRecipe(BaseModel):
     imageUrls: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
     ingredients: list[JustTheRecipeIngredient]
-    instructions: list[JustTheRecipeInstructionGroup | JustTheRecipeStep]
+    instructions: list[dict[str, Any]]  # Raw dictionaries
     source: str = "fromUrl"
 
-    def __init__(self, **data: Any) -> None:
-        # Convert simple instruction steps to groups if needed
-        if "instructions" in data:
-            instructions: list[dict[str, Any]] = []
-            for instr in data["instructions"]:
-                if isinstance(instr, dict) and "steps" not in instr:
-                    instruction_dict = instr
-                    name_raw: str = instruction_dict.get("name", "")
-
-                    group_data = {
-                        "steps": [instruction_dict],
-                        "name": name_raw,
-                        "type": "group",
-                    }
-                    instructions.append(group_data)
-                else:
-                    instructions.append(instr)
-            data["instructions"] = instructions
-        super().__init__(**data)
-
     def model_post_init(self, __context: Any) -> None:
-        """Calculate total time if not provided."""
+        """Calculate total time if not provided and convert instructions."""
         if self.totalTime == 0:
             self.totalTime = (self.prepTime or 0) + (self.cookTime or 0)
+
+        # Convert raw instruction dictionaries to proper objects
+        converted_instructions = []
+        for instruction in self.instructions:
+            if isinstance(instruction, dict):
+                if instruction.get("steps"):
+                    # It's a group
+                    converted_instructions.append(JustTheRecipeInstructionGroup(**instruction))
+                else:
+                    # It's a single step
+                    if "text" in instruction:
+                        # Use text as both text and name if name is missing
+                        instruction_copy = instruction.copy()
+                        if "name" not in instruction_copy:
+                            instruction_copy["name"] = instruction_copy["text"]
+                        converted_instructions.append(JustTheRecipeStep(**instruction_copy))
+            else:
+                converted_instructions.append(instruction)
+        self.instructions = converted_instructions

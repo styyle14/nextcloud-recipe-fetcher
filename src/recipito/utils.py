@@ -33,7 +33,6 @@ class DateTimeEncoder(json.JSONEncoder):
 def convert_to_nextcloud_format(raw_recipe: dict[str, Any], category: str) -> dict[str, Any]:
     """Convert raw recipe JSON to Nextcloud recipes format."""
     logger.info("Converting recipe to Nextcloud format")
-    # Validate input recipe format
     recipe = JustTheRecipe(**raw_recipe)
     now = datetime.now(UTC)
 
@@ -47,15 +46,15 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any], category: str) -> di
         seconds = seconds % 60
         return f"PT{hours}H{minutes}M{seconds}S"
 
-    # Safely handle instructions with type checking
+    # Convert instructions to simple text
     instructions: list[str] = []
-    for group in recipe.instructions:
-        if isinstance(group, JustTheRecipeInstructionGroup) and group.steps:
-            for step in group.steps:
-                if step.text:
-                    instructions.append(convert_characters(step.text))
-        elif isinstance(group, JustTheRecipeStep) and group.text:
-            instructions.append(convert_characters(group.text))
+    for instruction in recipe.instructions:
+        if isinstance(instruction, JustTheRecipeStep):
+            text = instruction.text or instruction.name
+            if text:
+                text = text.strip(". ")
+                if text and not text.lower().startswith("servings:"):
+                    instructions.append(convert_characters(text))
 
     # Convert ingredients with fraction handling
     ingredients = [convert_characters(ingredient.name) for ingredient in recipe.ingredients]
