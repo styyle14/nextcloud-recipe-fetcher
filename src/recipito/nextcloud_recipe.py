@@ -1,5 +1,6 @@
 import json
 import shutil
+import requests
 
 from datetime import datetime
 from datetime import timezone
@@ -118,10 +119,30 @@ def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
 
     # Parse raw JSON and convert to Nextcloud format
     raw_recipe = json.loads(recipe_json)
-    nextcloud_recipe = convert_to_nextcloud_format(raw_recipe)
+    nextcloud_recipe = NextcloudRecipe(**convert_to_nextcloud_format(raw_recipe))
 
     # Save recipe.json with custom encoder for datetime
     recipe_path = recipe_dir / "recipe.json"
-    recipe_path.write_text(json.dumps(nextcloud_recipe, indent=2, cls=DateTimeEncoder))
+    recipe_path.write_text(nextcloud_recipe.model_dump_json())
+
+    # Try to download and save the first image
+    if raw_recipe.get("imageUrls") and raw_recipe["imageUrls"]:
+        image_url = raw_recipe["imageUrls"][0]
+        try:
+            logger.info("Downloading image from: %s", image_url)
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+            
+            # Save the image as recipe.jpg regardless of original format
+            image_path = recipe_dir / "recipe.jpg"
+            image_path.write_bytes(response.content)
+            logger.info("Image saved to: %s", image_path)
+            
+            # Update the recipe.json with the image path
+            nextcloud_recipe.image = "recipe.jpg"
+            recipe_path.write_text(nextcloud_recipe.model_dump_json())
+            
+        except Exception as e:
+            logger.error("Failed to download image: %s", e)
 
     logger.info("Recipe saved successfully")

@@ -116,9 +116,18 @@ class NextcloudRecipe(BaseModel):
 
     def model_dump_json(self, **kwargs: Any) -> str:
         """Override JSON serialization to handle datetime."""
-        kwargs.setdefault("indent", 2)
-        data = self.model_dump(mode="json", **kwargs)
+        # Extract json.dumps kwargs
+        json_kwargs = {
+            "indent": kwargs.pop("indent", 2)
+        }
+        
+        # Get model data with remaining kwargs
+        data = self.model_dump(by_alias=True, **kwargs)
+        
+        # Format datetime fields
         for field in ["dateModified", "dateCreated", "datePublished"]:
             if field in data and data[field] is not None:
                 data[field] = data[field].strftime("%Y-%m-%dT%H:%M:%S+0000")
-        return json.dumps(data, **kwargs)
+        
+        # Return JSON string
+        return json.dumps(data, **json_kwargs)
