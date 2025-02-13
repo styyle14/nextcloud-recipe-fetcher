@@ -50,16 +50,28 @@ class JustTheRecipeStep(BaseModel):
     """Represents a single step in recipe instructions."""
 
     name: str
-    text: str
+    text: str | None = None  # Make text optional
     type: str = "step"
+
+    def __init__(self, **data):
+        # If text is not provided, use name as text
+        if "text" not in data and "name" in data:
+            data["text"] = data["name"]
+        super().__init__(**data)
 
 
 class JustTheRecipeInstructionGroup(BaseModel):
     """Represents a group of related recipe steps."""
 
-    steps: list[JustTheRecipeStep]
+    steps: list[JustTheRecipeStep] | None = None  # Make steps optional
     name: str
     type: str = "group"
+
+    def __init__(self, **data):
+        # If steps is not provided but we have name/type, create a single step
+        if not data.get("steps") and "name" in data:
+            data["steps"] = [{"name": data["name"], "type": "step"}]
+        super().__init__(**data)
 
 
 class JustTheRecipeNutritionInfo(BaseModel):
@@ -84,8 +96,25 @@ class JustTheRecipe(BaseModel):
     imageUrls: list[str]
     keywords: list[str]
     ingredients: list[JustTheRecipeIngredient]
-    instructions: list[JustTheRecipeInstructionGroup]
+    instructions: list[JustTheRecipeInstructionGroup | JustTheRecipeStep]  # Allow either type
     source: str = "fromUrl"
+
+    def __init__(self, **data):
+        # Convert simple instruction steps to groups if needed
+        if "instructions" in data:
+            instructions = []
+            for instr in data["instructions"]:
+                if isinstance(instr, dict) and "steps" not in instr:
+                    # Convert single step to group
+                    instructions.append({
+                        "steps": [instr],
+                        "name": instr.get("name", ""),
+                        "type": "group"
+                    })
+                else:
+                    instructions.append(instr)
+            data["instructions"] = instructions
+        super().__init__(**data)
 
 
 class NextcloudRecipe(BaseModel):
