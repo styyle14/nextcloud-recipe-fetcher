@@ -45,7 +45,7 @@ def mock_recipe() -> dict[str, Any]:
 
 
 @pytest.fixture
-def mock_requests(mock_recipe: dict[str, Any]) -> Generator[Mock, None, None]:
+def mock_requests(mock_recipe: dict[str, Any]) -> Generator[Mock]:
     """Fixture to mock requests."""
     logger.info("Setting up mock requests")
     with patch("recipito.main.requests") as mock_req:
@@ -95,7 +95,6 @@ def test_main_no_urls() -> None:
     """Test handling no URLs."""
     logger.info("Testing no URLs case")
     with pytest.raises(typer.Exit) as exc_info:
-        logger.debug("Attempting to run with no URLs")
         main([])
     logger.debug("Expected exit raised: %s", exc_info)
     logger.info("No URLs test completed")
@@ -165,3 +164,38 @@ def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
         assert nextcloud_json.exists(), "Nextcloud recipe JSON file not created"
 
     logger.info("File saving test completed")
+
+
+def test_file_saving_with_category(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
+    """Test that files are saved correctly with custom category."""
+    logger.info("Testing file saving functionality with custom category")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir(parents=True)
+    logger.debug("Created output directory: %s", output_dir)
+
+    json_dir = output_dir / "json"
+    json_dir.mkdir(parents=True)
+    logger.debug("Created JSON directory: %s", json_dir)
+
+    recipe_title = "Test Recipe"
+    custom_category = "Dessert"
+    logger.debug("Using recipe title: %s with category: %s", recipe_title, custom_category)
+
+    with (
+        patch("recipito.main.Path", return_value=output_dir),
+        patch("recipito.nextcloud_recipe.Path", return_value=output_dir),
+        patch("recipito.main.get_page_title", return_value=recipe_title),
+        patch("recipito.main.get_recipe_content", return_value=json.dumps(mock_recipe)),
+    ):
+        logger.debug("Processing recipe with custom category")
+        main(urls=["https://example.com/recipe"], keywords=[], category=custom_category)
+
+        # Verify the category in the saved file
+        nextcloud_json = output_dir / "nextcloud_recipes" / recipe_title / "recipe.json"
+        assert nextcloud_json.exists(), "Nextcloud recipe JSON file not created"
+
+        saved_recipe = json.loads(nextcloud_json.read_text())
+        assert saved_recipe["recipeCategory"] == custom_category, "Custom category not saved correctly"
+
+    logger.info("File saving test with custom category completed")

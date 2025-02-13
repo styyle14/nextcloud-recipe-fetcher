@@ -1,7 +1,6 @@
 """Models for recipe instructions."""
 
 from typing import Any
-from typing import Union
 
 from pydantic import BaseModel
 
@@ -10,7 +9,7 @@ class JustTheRecipeStep(BaseModel):
     """Represents a single step in recipe instructions."""
 
     name: str
-    text: Union[str, None] = None
+    text: str | None = None
     type: str = "step"
 
     def __init__(self, **data: Any) -> None:
@@ -22,7 +21,7 @@ class JustTheRecipeStep(BaseModel):
 class JustTheRecipeInstructionGroup(BaseModel):
     """Represents a group of related recipe steps."""
 
-    steps: Union[list[JustTheRecipeStep], None] = None
+    steps: list[JustTheRecipeStep] | None = None
     name: str
     type: str = "group"
 

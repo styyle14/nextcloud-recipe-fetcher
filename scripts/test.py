@@ -16,12 +16,6 @@ def main() -> None:
             sys.executable,
             "-m",
             "pytest",
-            "--cov=src",
-            "--cov-report=term-missing",
-            "--cov-report=html",
-            "-v",  # Add verbose output
-            "--log-cli-level=DEBUG",  # Ensure log level is set
-            "tests/",
         ],
         cwd=project_root,
         check=False,

@@ -2,6 +2,7 @@ import json
 import urllib.parse
 
 from pathlib import Path
+from typing import Annotated
 
 import requests
 import typer
@@ -79,41 +80,46 @@ def get_recipe_content(url: str) -> str:
 
 @app.command()
 def main(
-    urls: list[str] = typer.Argument(
-        None,
-        help="List of URLs to process",
-    ),
-    keywords: list[str] = typer.Option(
-        [],
-        "--keyword",
-        "-k",
-        help="Keywords to add to the recipe (can be specified multiple times)",
-    ),
+    urls: Annotated[list[str], typer.Argument(help="URLs to scrape")],
+    keywords: Annotated[list[str] | None, typer.Option("--keyword", "-k", help="Keywords to filter recipes")] = None,
+    category: Annotated[str, typer.Option("--category", "-C", help="Recipe category")] = "Main Course",
 ) -> None:
-    """Process a list of URLs and print their titles and recipes."""
+    """Scrape recipes from URLs and save them as JSON."""
     if not urls:
         logger.error("No URLs provided")
         raise typer.Exit(code=1)
+
+    # Initialize keywords to empty list if None
+    keywords = keywords or []
 
     logger.info("Processing %d URLs", len(urls))
     if keywords:
         logger.info("Using keywords: %s", ", ".join(keywords))
 
-    json_dir = Path("output") / "json"
+    output_dir = Path("output")
+    json_dir = output_dir / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
 
     for i, url in enumerate(urls, 1):
-        title = get_page_title(url)
-        recipe = get_recipe_content(url)
+        try:
+            title = get_page_title(url)
+            content = get_recipe_content(url)
 
-        logger.info("URL %d: %s", i, url)
-        logger.info("   Title: %s", title)
-        logger.info("   Recipe extracted: %s", "Yes" if not recipe.startswith("Error") else "No")
+            logger.info("URL %d: %s", i, url)
+            logger.info("   Title: %s", title)
+            logger.info("   Recipe extracted: %s", "Yes" if not content.startswith("Error") else "No")
 
-        if not title.startswith("Error"):
-            filename = sanitize_filename(title)
-            (json_dir / f"{filename}.json").write_text(recipe)
-            save_nextcloud_recipe(filename, recipe, keywords)
+            if not title.startswith("Error"):
+                filename = sanitize_filename(title)
+                recipe_path = json_dir / f"{filename}.json"
+                recipe_path.write_text(content)
+                logger.info("Saved recipe JSON to %s", recipe_path)
+
+                # Save Nextcloud recipe JSON
+                save_nextcloud_recipe(filename, content, keywords, category)
+
+        except Exception as e:
+            logger.error("Error processing %s: %s", url, e)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,9 @@
 import json
-import shutil
 
+from datetime import UTC
 from datetime import datetime
-from datetime import timezone
 from pathlib import Path
 from typing import Any
-from typing import Optional
 
 import requests
 
@@ -27,12 +25,12 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
+def convert_to_nextcloud_format(raw_recipe: dict[str, Any], category: str) -> dict[str, Any]:
     """Convert raw recipe JSON to Nextcloud recipes format."""
     logger.info("Converting recipe to Nextcloud format")
     # Validate input recipe format
     recipe = JustTheRecipe(**raw_recipe)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Convert time from nanoseconds to "PTxHyMzS" format
     def format_time(ns: int) -> str:
@@ -92,7 +90,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
         prepTime=format_time(recipe.prepTime),
         cookTime=format_time(recipe.cookTime),
         totalTime=format_time(recipe.totalTime),
-        recipeCategory=", ".join(recipe.categories),
+        recipeCategory=category,
         keywords="",
         recipeYield=recipe.servings,
         tool=[],
@@ -109,46 +107,32 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
     return nextcloud_recipe.model_dump(by_alias=True)
 
 
-def save_nextcloud_recipe(title: str, recipe_json: str, keywords: Optional[list[str]] = None) -> None:
-    """
-    Save recipe in Nextcloud recipes format.
-
-    Args:
-        title: The webpage title to use for directory name
-        recipe_json: The JSON string containing recipe data
-        keywords: Optional list of keywords to add to the recipe
-    """
-    logger.info("Saving recipe: %s", title)
-    # Create base directory for Nextcloud recipes
-    nextcloud_dir = Path("output") / "nextcloud_recipes"
-    nextcloud_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create recipe directory using sanitized title
-    recipe_dir = nextcloud_dir / title
-
-    # Remove existing directory if it exists
-    if recipe_dir.exists():
-        shutil.rmtree(recipe_dir)
-
-    recipe_dir.mkdir()
-
-    # Parse raw JSON and convert to Nextcloud format
-    raw_recipe = json.loads(recipe_json)
-    nextcloud_data = convert_to_nextcloud_format(raw_recipe)
+def save_nextcloud_recipe(
+    title: str,
+    recipe_json: str,
+    keywords: list[str],
+    category: str = "Main Course",
+) -> None:
+    """Save recipe in Nextcloud format."""
+    recipe_data = json.loads(recipe_json)
+    nextcloud_data = convert_to_nextcloud_format(recipe_data, category)
 
     # Add keywords if provided
     if keywords:
         nextcloud_data["keywords"] = ", ".join(keywords)
 
-    nextcloud_recipe = NextcloudRecipe(**nextcloud_data)
+    # Create Nextcloud recipe directory
+    output_dir = Path("output")
+    recipe_dir = output_dir / "nextcloud_recipes" / title
+    recipe_dir.mkdir(parents=True, exist_ok=True)
 
     # Save recipe.json with custom encoder for datetime
     recipe_path = recipe_dir / "recipe.json"
-    recipe_path.write_text(nextcloud_recipe.model_dump_json())
+    recipe_path.write_text(json.dumps(nextcloud_data, indent=2, cls=DateTimeEncoder))
 
     # Try to download and save the first image
-    if raw_recipe.get("imageUrls") and raw_recipe["imageUrls"]:
-        image_url = raw_recipe["imageUrls"][0]
+    if recipe_data.get("imageUrls") and recipe_data["imageUrls"]:
+        image_url = recipe_data["imageUrls"][0]
         try:
             logger.info("Downloading image from: %s", image_url)
             response = requests.get(image_url, timeout=30)
@@ -177,8 +161,8 @@ def save_nextcloud_recipe(title: str, recipe_json: str, keywords: Optional[list[
             logger.info("Image saved to: %s", image_path)
 
             # Update the recipe.json with the image path
-            nextcloud_recipe.image = f"full{ext}"
-            recipe_path.write_text(nextcloud_recipe.model_dump_json())
+            nextcloud_data["image"] = f"full{ext}"
+            recipe_path.write_text(json.dumps(nextcloud_data, indent=2, cls=DateTimeEncoder))
 
         except Exception as e:
             logger.error("Failed to download image: %s", e)

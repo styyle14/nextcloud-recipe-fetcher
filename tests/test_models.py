@@ -1,7 +1,7 @@
 """Tests for recipe models."""
 
+from datetime import UTC
 from datetime import datetime
-from datetime import timezone
 
 from recipito.models import JustTheRecipe
 from recipito.models import JustTheRecipeInstructionGroup
@@ -55,7 +55,7 @@ def test_recipe_conversion() -> None:
 
 def test_nextcloud_recipe_serialization() -> None:
     """Test NextcloudRecipe JSON serialization."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     recipe = NextcloudRecipe(
         id="test",
         name="Test Recipe",

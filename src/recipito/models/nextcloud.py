@@ -2,10 +2,9 @@
 
 import json
 
+from datetime import UTC
 from datetime import datetime
-from datetime import timezone
 from typing import Any
-from typing import Optional
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -39,7 +38,7 @@ class NextcloudRecipe(BaseModel):
     type: str = Field(alias="@type", default="Recipe")
     dateModified: datetime
     dateCreated: datetime
-    datePublished: Optional[datetime] = None
+    datePublished: datetime | None = None
     printImage: bool = True
     imageUrl: str = "/apps/cookbook/webapp/recipes/{}/image?size=full"
 
@@ -60,15 +59,13 @@ class NextcloudRecipe(BaseModel):
         return json.dumps(data, **json_kwargs)
 
 
-def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
+def convert_to_nextcloud_format(raw_recipe: dict[str, Any], category: str = "Main Course") -> dict[str, Any]:
     """Convert raw recipe JSON to Nextcloud recipes format."""
     recipe = JustTheRecipe(**raw_recipe)
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     # Convert ingredients with fraction handling
-    ingredients: list[str] = []
-    for ingredient in recipe.ingredients:
-        ingredients.append(convert_characters(ingredient.name))
+    ingredients = [convert_characters(ingredient.name) for ingredient in recipe.ingredients]
 
     # Convert instructions to simple text
     instructions: list[str] = []
@@ -86,7 +83,7 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
         prepTime=str(recipe.prepTime),
         cookTime=str(recipe.cookTime),
         totalTime=str(recipe.totalTime),
-        recipeCategory=recipe.categories[0] if recipe.categories else "",
+        recipeCategory=category,
         recipeYield=recipe.servings,
         recipeIngredient=ingredients,
         recipeInstructions=instructions,

@@ -1,7 +1,6 @@
 """Base recipe models."""
 
 from typing import Any
-from typing import Union
 from typing import cast
 
 from pydantic import BaseModel
@@ -34,7 +33,7 @@ class JustTheRecipe(BaseModel):
     imageUrls: list[str]
     keywords: list[str]
     ingredients: list[JustTheRecipeIngredient]
-    instructions: list[Union[JustTheRecipeInstructionGroup, JustTheRecipeStep]]
+    instructions: list[JustTheRecipeInstructionGroup | JustTheRecipeStep]
     source: str = "fromUrl"
 
     def __init__(self, **data: Any) -> None:
