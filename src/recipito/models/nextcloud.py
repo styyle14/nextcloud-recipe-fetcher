@@ -11,9 +11,9 @@ from pydantic import Field
 
 from recipito.utils import convert_characters
 
-from .base import JustTheRecipe
-from .base import JustTheRecipeNutritionInfo
-from .instruction import JustTheRecipeInstructionGroup
+from .just_the_recipe import JustTheRecipe
+from .just_the_recipe import JustTheRecipeInstructionGroup
+from .just_the_recipe import JustTheRecipeNutritionInfo
 
 
 class NextcloudRecipe(BaseModel):

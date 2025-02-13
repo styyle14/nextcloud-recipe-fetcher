@@ -1,23 +1,17 @@
-"""Recipe models package."""
+"""Recipe models."""
 
-from .base import JustTheRecipe
-from .base import JustTheRecipeNutritionInfo
-from .instruction import JustTheRecipeInstructionGroup
-from .instruction import JustTheRecipeStep
+from .just_the_recipe import JustTheRecipe
 from .just_the_recipe import JustTheRecipeIngredient
-from .just_the_recipe import JustTheRecipeItem
-from .just_the_recipe import JustTheRecipeQuantity
-from .just_the_recipe import JustTheRecipeUnit
+from .just_the_recipe import JustTheRecipeInstructionGroup
+from .just_the_recipe import JustTheRecipeNutritionInfo
+from .just_the_recipe import JustTheRecipeStep
 from .nextcloud import NextcloudRecipe
 
 __all__ = [
     "JustTheRecipe",
     "JustTheRecipeIngredient",
     "JustTheRecipeInstructionGroup",
-    "JustTheRecipeItem",
     "JustTheRecipeNutritionInfo",
-    "JustTheRecipeQuantity",
     "JustTheRecipeStep",
-    "JustTheRecipeUnit",
     "NextcloudRecipe",
 ]
