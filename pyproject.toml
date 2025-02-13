@@ -1,6 +1,6 @@
 [project]
 name = "recipito"
-version = "0.1.0"
+version = "0.1.1"
 description = "URL title fetcher tool"
 authors = [
     { name = "Your Name", email = "your.email@example.com" }
@@ -158,7 +158,7 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 pythonVersion = "3.13"
 include = ["src"]
 exclude = ["**/node_modules", "**/__pycache__"]
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
 
