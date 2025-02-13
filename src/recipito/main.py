@@ -15,9 +15,33 @@ app = typer.Typer(help="URL processor application")
 
 
 def sanitize_filename(title: str) -> str:
-    """Convert title to filename-safe format using first 5 words."""
-    words = "".join(c if c.isalnum() or c.isspace() else " " for c in title).split()
-    return "-".join(words[:5]).lower()
+    """
+    Convert title to a valid filename across platforms.
+    
+    - Remove invalid filename characters
+    - Limit to 75 characters
+    - Ensure compatibility with Windows, Mac, and Linux
+    """
+    # Characters not allowed in filenames across platforms
+    invalid_chars = '<>:"/\\|?*'
+    
+    # Replace invalid chars with dash
+    clean_title = title
+    for char in invalid_chars:
+        clean_title = clean_title.replace(char, "-")
+        
+    # Replace multiple dashes with single dash
+    while "--" in clean_title:
+        clean_title = clean_title.replace("--", "-")
+    
+    # Remove leading/trailing dashes and spaces
+    clean_title = clean_title.strip("- ")
+    
+    # Limit length to 75 chars
+    if len(clean_title) > 75:
+        clean_title = clean_title[:75].rstrip("-")
+    
+    return clean_title
 
 
 def get_page_title(url: str) -> str:
