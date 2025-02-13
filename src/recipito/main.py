@@ -56,6 +56,11 @@ def main(
         None,  # Use None instead of ... for default
         help="List of URLs to process",
     ),
+    keywords: list[str] = typer.Option(
+        [],
+        "--keyword", "-k",
+        help="Keywords to add to the recipe (can be specified multiple times)",
+    ),
 ) -> None:
     """Process a list of URLs and print their titles and recipes."""
     if not urls:
@@ -63,6 +68,9 @@ def main(
         raise typer.Exit(code=1)
 
     logger.info("Processing %d URLs", len(urls))
+    if keywords:
+        logger.info("Using keywords: %s", ", ".join(keywords))
+
     json_dir = Path("output") / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +85,7 @@ def main(
         if not title.startswith("Error"):
             filename = sanitize_filename(title)
             (json_dir / f"{filename}.json").write_text(recipe)
-            save_nextcloud_recipe(filename, recipe)
+            save_nextcloud_recipe(filename, recipe, keywords)
 
 
 if __name__ == "__main__":

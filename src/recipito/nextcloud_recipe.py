@@ -95,13 +95,14 @@ def convert_to_nextcloud_format(raw_recipe: dict[str, Any]) -> dict[str, Any]:
     return nextcloud_recipe.model_dump(by_alias=True)
 
 
-def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
+def save_nextcloud_recipe(title: str, recipe_json: str, keywords: list[str] = None) -> None:
     """
     Save recipe in Nextcloud recipes format.
 
     Args:
         title: The webpage title to use for directory name
         recipe_json: The JSON string containing recipe data
+        keywords: Optional list of keywords to add to the recipe
     """
     logger.info("Saving recipe: %s", title)
     # Create base directory for Nextcloud recipes
@@ -119,7 +120,13 @@ def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
 
     # Parse raw JSON and convert to Nextcloud format
     raw_recipe = json.loads(recipe_json)
-    nextcloud_recipe = NextcloudRecipe(**convert_to_nextcloud_format(raw_recipe))
+    nextcloud_data = convert_to_nextcloud_format(raw_recipe)
+    
+    # Add keywords if provided
+    if keywords:
+        nextcloud_data["keywords"] = ", ".join(keywords)
+    
+    nextcloud_recipe = NextcloudRecipe(**nextcloud_data)
 
     # Save recipe.json with custom encoder for datetime
     recipe_path = recipe_dir / "recipe.json"
@@ -133,13 +140,30 @@ def save_nextcloud_recipe(title: str, recipe_json: str) -> None:
             response = requests.get(image_url, timeout=30)
             response.raise_for_status()
             
-            # Save the image as recipe.jpg regardless of original format
-            image_path = recipe_dir / "recipe.jpg"
+            # Determine image extension from Content-Type or URL
+            content_type = response.headers.get("Content-Type", "")
+            if "jpeg" in content_type or "jpg" in content_type:
+                ext = ".jpg"
+            elif "png" in content_type:
+                ext = ".png"
+            elif "webp" in content_type:
+                ext = ".webp"
+            else:
+                # Fallback to extension from URL
+                url_ext = image_url.split(".")[-1].lower()
+                if url_ext in ["jpg", "jpeg", "png", "webp"]:
+                    ext = f".{url_ext}"
+                else:
+                    logger.warning("Unknown image type: %s, defaulting to .jpg", content_type)
+                    ext = ".jpg"
+            
+            # Save the image as full.<ext>
+            image_path = recipe_dir / f"full{ext}"
             image_path.write_bytes(response.content)
             logger.info("Image saved to: %s", image_path)
             
             # Update the recipe.json with the image path
-            nextcloud_recipe.image = "recipe.jpg"
+            nextcloud_recipe.image = f"full{ext}"
             recipe_path.write_text(nextcloud_recipe.model_dump_json())
             
         except Exception as e:
