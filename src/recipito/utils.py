@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from PIL import Image
+import io
 
-from recipito.logger import logger
+from recipito.logger import logger, console
 from recipito.text import convert_characters  # Updated import
 
 from .models import JustTheRecipe
@@ -92,6 +94,7 @@ def save_nextcloud_recipe(
     category: str = "Main Course",
 ) -> None:
     """Save recipe in Nextcloud format."""
+    logger.info("[bold blue]Converting recipe to Nextcloud format[/]")
     recipe_data = json.loads(recipe_json)
     nextcloud_data = convert_to_nextcloud_format(recipe_data, category)
 
@@ -112,37 +115,28 @@ def save_nextcloud_recipe(
     if recipe_data.get("imageUrls") and recipe_data["imageUrls"]:
         image_url = recipe_data["imageUrls"][0]
         try:
-            logger.info("Downloading image from: %s", image_url)
+            logger.info("[blue]Downloading image from:[/] %s", image_url)
             response = requests.get(image_url, timeout=30)
             response.raise_for_status()
 
-            # Determine image extension from Content-Type or URL
-            content_type = response.headers.get("Content-Type", "")
-            if "jpeg" in content_type or "jpg" in content_type:
-                ext = ".jpg"
-            elif "png" in content_type:
-                ext = ".png"
-            elif "webp" in content_type:
-                ext = ".webp"
-            else:
-                # Fallback to extension from URL
-                url_ext = image_url.split(".")[-1].lower()
-                if url_ext in ["jpg", "jpeg", "png", "webp"]:
-                    ext = f".{url_ext}"
-                else:
-                    logger.warning("Unknown image type: %s, defaulting to .jpg", content_type)
-                    ext = ".jpg"
+            # Load image data into PIL Image
+            image_data = io.BytesIO(response.content)
+            image = Image.open(image_data)
 
-            # Save the image as full.<ext>
-            image_path = recipe_dir / f"full{ext}"
-            image_path.write_bytes(response.content)
-            logger.info("Image saved to: %s", image_path)
+            # Convert to RGB if necessary (e.g., for PNG with transparency)
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
+
+            # Save as JPEG
+            image_path = recipe_dir / "full.jpg"
+            image.save(image_path, "JPEG", quality=85)
+            logger.info("[green]Image saved to:[/] %s", image_path)
 
             # Update the recipe.json with the image path
-            nextcloud_data["image"] = f"full{ext}"
+            nextcloud_data["image"] = "full.jpg"
             recipe_path.write_text(json.dumps(nextcloud_data, indent=2, cls=DateTimeEncoder))
 
         except Exception as e:
-            logger.error("Failed to download image: %s", e)
+            logger.error("[red]Failed to download/convert image:[/] %s", e)
 
-    logger.info("Recipe saved successfully")
+    logger.info("[bold green]Recipe saved successfully[/]")

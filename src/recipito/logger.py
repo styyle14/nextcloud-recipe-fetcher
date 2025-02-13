@@ -1,17 +1,21 @@
+"""Logging configuration."""
+
 import logging
 import sys
 
-# Create logger
+from rich.console import Console
+from rich.logging import RichHandler
+
+# Create console for rich output
+console = Console()
+
+# Configure logging with Rich handler
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(console=console, rich_tracebacks=True)],
+)
+
+# Get logger instance
 logger = logging.getLogger("recipito")
-logger.setLevel(logging.INFO)
-
-# Create console handler with a higher log level
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.INFO)
-
-# Create formatter and add it to the handler
-formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
-console_handler.setFormatter(formatter)
-
-# Add the handler to the logger
-logger.addHandler(console_handler)

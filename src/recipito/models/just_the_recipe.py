@@ -42,6 +42,18 @@ class JustTheRecipeNutritionInfo(BaseModel):
     """Represents nutrition information."""
 
     type: str = Field(alias="@type", default="NutritionInformation")
+    calories: str | None = None
+    carbohydrateContent: str | None = None
+    cholesterolContent: str | None = None
+    fatContent: str | None = None
+    fiberContent: str | None = None
+    proteinContent: str | None = None
+    saturatedFatContent: str | None = None
+    servingSize: str | None = None
+    sodiumContent: str | None = None
+    sugarContent: str | None = None
+    transFatContent: str | None = None
+    unsaturatedFatContent: str | None = None
 
 
 class JustTheRecipe(BaseModel):
@@ -52,13 +64,13 @@ class JustTheRecipe(BaseModel):
     name: str
     sourceUrl: str
     servings: int
-    cookTime: int
-    prepTime: int
-    totalTime: int
-    categories: list[str]
-    cuisines: list[str]
-    imageUrls: list[str]
-    keywords: list[str]
+    cookTime: int | None = 0
+    prepTime: int | None = 0
+    totalTime: int | None = 0
+    categories: list[str] = Field(default_factory=list)
+    cuisines: list[str] = Field(default_factory=list)
+    imageUrls: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
     ingredients: list[JustTheRecipeIngredient]
     instructions: list[JustTheRecipeInstructionGroup | JustTheRecipeStep]
     source: str = "fromUrl"
@@ -82,3 +94,8 @@ class JustTheRecipe(BaseModel):
                     instructions.append(instr)
             data["instructions"] = instructions
         super().__init__(**data)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Calculate total time if not provided."""
+        if self.totalTime == 0:
+            self.totalTime = (self.prepTime or 0) + (self.cookTime or 0)
