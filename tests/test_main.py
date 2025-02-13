@@ -16,7 +16,8 @@ from recipito.main import main
 @pytest.fixture
 def mock_recipe() -> dict[str, Any]:
     """Fixture to provide a mock recipe."""
-    return {
+    logger.debug("Creating mock recipe data")
+    recipe_data = {
         "version": "1.0.0",
         "id": "test-id",
         "name": "Test Recipe",
@@ -39,6 +40,8 @@ def mock_recipe() -> dict[str, Any]:
         ],
         "source": "fromUrl",
     }
+    logger.debug("Mock recipe data: %s", recipe_data)
+    return recipe_data
 
 
 @pytest.fixture
@@ -46,51 +49,72 @@ def mock_requests(mock_recipe: dict[str, Any]) -> Generator[Mock, None, None]:
     """Fixture to mock requests."""
     logger.info("Setting up mock requests")
     with patch("recipito.main.requests") as mock_req:
-        # Mock successful response
+        logger.debug("Creating mock response")
         mock_response = Mock()
         mock_response.text = "<html><title>Test Recipe</title></html>"
         mock_response.json.return_value = mock_recipe
         mock_req.get.return_value = mock_response
+        logger.debug("Mock response configured with title: %s", "Test Recipe")
         yield mock_req
     logger.info("Tearing down mock requests")
 
 
 def test_main_single_url(tmp_path: Path) -> None:
     """Test processing a single URL."""
+    logger.info("Testing single URL processing")
     json_dir = tmp_path / "output" / "json"
     json_dir.mkdir(parents=True)
+    logger.debug("Created test directory: %s", json_dir)
 
     with patch("recipito.main.Path", return_value=json_dir):
+        logger.debug("Processing URL: %s", "https://example.com/recipe")
         main(urls=["https://example.com/recipe"], keywords=[])
+        logger.info("Single URL processing completed")
 
 
 def test_main_multiple_urls(tmp_path: Path) -> None:
     """Test processing multiple URLs."""
+    logger.info("Testing multiple URL processing")
     urls = [
         "https://example.com/recipe1",
         "https://example.com/recipe2",
     ]
+    logger.debug("URLs to process: %s", urls)
+
     json_dir = tmp_path / "output" / "json"
     json_dir.mkdir(parents=True)
+    logger.debug("Created test directory: %s", json_dir)
 
     with patch("recipito.main.Path", return_value=json_dir):
+        logger.debug("Processing URLs")
         main(urls=urls, keywords=[])
+        logger.info("Multiple URL processing completed")
 
 
 def test_main_no_urls() -> None:
     """Test handling no URLs."""
-    with pytest.raises(typer.Exit):  # Typer raises Exit exception
+    logger.info("Testing no URLs case")
+    with pytest.raises(typer.Exit) as exc_info:
+        logger.debug("Attempting to run with no URLs")
         main([])
+    logger.debug("Expected exit raised: %s", exc_info)
+    logger.info("No URLs test completed")
 
 
 def test_error_handling(mock_requests: Mock, tmp_path: Path) -> None:
     """Test handling request errors."""
+    logger.info("Testing error handling")
     mock_requests.get.side_effect = Exception("Test error")
+    logger.debug("Configured mock request to raise error: %s", "Test error")
+
     json_dir = tmp_path / "output" / "json"
     json_dir.mkdir(parents=True)
+    logger.debug("Created test directory: %s", json_dir)
 
     with patch("recipito.main.Path", return_value=json_dir):
+        logger.debug("Processing URL with expected error")
         main(urls=["https://example.com/recipe"], keywords=[])
+        logger.info("Error handling test completed")
 
 
 def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
@@ -105,9 +129,11 @@ def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
     # Create json directory
     json_dir = output_dir / "json"
     json_dir.mkdir(parents=True)
+    logger.debug("Created JSON directory: %s", json_dir)
 
     recipe_title = "Test Recipe"
     sanitized_title = recipe_title  # This matches what sanitize_filename will produce
+    logger.debug("Using recipe title: %s (sanitized: %s)", recipe_title, sanitized_title)
 
     with (
         patch("recipito.main.Path", return_value=output_dir),
@@ -115,6 +141,7 @@ def test_file_saving(tmp_path: Path, mock_recipe: dict[str, Any]) -> None:
         patch("recipito.main.get_page_title", return_value=recipe_title),
         patch("recipito.main.get_recipe_content", return_value=json.dumps(mock_recipe)),
     ):
+        logger.debug("Processing recipe with mocked dependencies")
         main(urls=["https://example.com/recipe"], keywords=[])
 
         # Check both JSON files were created
